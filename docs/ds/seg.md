@@ -329,6 +329,167 @@ def getsum(l, r, s, t, p):
 
 - 标记永久化：如果确定懒惰标记不会在中途被加到溢出（即超过了该类型数据所能表示的最大范围），那么就可以将标记永久化。标记永久化可以避免下传懒惰标记，只需在进行询问时把标记的影响加到答案当中，从而降低程序常数。具体如何处理与题目特性相关，需结合题目来写。这也是树套树和可持久化数据结构中会用到的一种技巧。
 
+## C++模板代码
+
+??? "SegTreeLazyRangeAdd 支持区间加和区间求和"
+     ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+template<typename T>
+class SegTreeLazyRangeAdd {
+	vector<T> tree, lazy;
+	vector<T> *arr;
+	int n, root, n4, end;
+	void maintain(int cl, int cr, int p) {
+		int cm = cl + (cr - cl) / 2;
+		if (cl != cr && lazy[p]) {
+			lazy[p * 2] += lazy[p];
+			lazy[p * 2 + 1] += lazy[p];
+			tree[p * 2] += lazy[p] * (cm - cl + 1);
+			tree[p * 2 + 1] += lazy[p] * (cr - cm);
+			lazy[p] = 0;
+		}
+	}
+	T range_sum(int l, int r, int cl, int cr, int p) {
+		if (l <= cl && cr <= r)
+			return tree[p];
+		int m = cl + (cr - cl) / 2;
+		T sum = 0;
+		maintain(cl, cr, p);
+		if (l <= m) sum += range_sum(l, r, cl, m, p * 2);
+		if (r > m) sum += range_sum(l, r, m + 1, cr, p * 2 + 1);
+		return sum;
+	}
+	void range_add(int l, int r, T val, int cl, int cr, int p) {
+		if (l <= cl && cr <= r) {
+			lazy[p] += val;
+			tree[p] += (cr - cl + 1) * val;
+			return;
+		}
+		int m = cl + (cr - cl) / 2;
+		maintain(cl, cr, p);
+		if (l <= m) range_add(l, r, val, cl, m, p * 2);
+		if (r > m) range_add(l, r, val, m + 1, cr, p * 2 + 1);
+		tree[p] = tree[p * 2] + tree[p * 2 + 1];
+	}
+	void build(int s, int t, int p) {
+		if (s == t) {
+			tree[p] = (*arr)[s];
+			return;
+		}
+		int m = s + (t - s) / 2;
+		build(s, m, p * 2);
+		build(m + 1, t, p * 2 + 1);
+		tree[p] = tree[p * 2] + tree[p * 2 + 1];
+	}
+
+public:
+	explicit SegTreeLazyRangeAdd<T>(vector<T> v) {
+		n = v.size();
+		n4 = n * 4;
+		tree = vector<T>(n4, 0);
+		lazy = vector<T>(n4, 0);
+		arr = &v;
+		end = n - 1;
+		root = 1;
+		build(0, end, 1);
+		arr = nullptr;
+	}
+	void show(int p, int depth = 0) {
+		if (p > n4 || tree[p] == 0) return;
+		show(p * 2, depth + 1);
+		for (int i = 0; i < depth; ++i) putchar('\t');
+		printf("%d:%d\n", tree[p], lazy[p]);
+		show(p * 2 + 1, depth + 1);
+	}
+	T range_sum(int l, int r) {
+		return range_sum(l, r, 0, end, root);
+	}
+	void range_add(int l, int r, int val) {
+		range_add(l, r, val, 0, end, root);
+	}
+};
+     ```
+
+??? "SegTreeLazyRangeSet 支持区间设置值和区间求和"
+    ```cpp
+#include <bits/stdc++.h>
+using namespace std;
+template<typename T>
+class SegTreeLazyRangeSet {
+	vector<T> tree, lazy;
+	vector<T> *arr;
+	int n, root, n4, end;
+	void maintain(int cl, int cr, int p) {
+		int cm = cl + (cr - cl) / 2;
+		if (cl != cr && lazy[p]) {
+			lazy[p * 2] = lazy[p];
+			lazy[p * 2 + 1] = lazy[p];
+			tree[p * 2] = lazy[p] * (cm - cl + 1);
+			tree[p * 2 + 1] = lazy[p] * (cr - cm);
+			lazy[p] = 0;
+		}
+	}
+	T range_sum(int l, int r, int cl, int cr, int p) {
+		if (l <= cl && cr <= r)
+			return tree[p];
+		int m = cl + (cr - cl) / 2;
+		T sum = 0;
+		maintain(cl, cr, p);
+		if (l <= m) sum += range_sum(l, r, cl, m, p * 2);
+		if (r > m) sum += range_sum(l, r, m + 1, cr, p * 2 + 1);
+		return sum;
+	}
+	void range_set(int l, int r, T val, int cl, int cr, int p) {
+		if (l <= cl && cr <= r) {
+			lazy[p] = val;
+			tree[p] = (cr - cl + 1) * val;
+			return;
+		}
+		int m = cl + (cr - cl) / 2;
+		maintain(cl, cr, p);
+		if (l <= m) range_set(l, r, val, cl, m, p * 2);
+		if (r > m) range_set(l, r, val, m + 1, cr, p * 2 + 1);
+		tree[p] = tree[p * 2] + tree[p * 2 + 1];
+	}
+	void build(int s, int t, int p) {
+		if (s == t) {
+			tree[p] = (*arr)[s];
+			return;
+		}
+		int m = s + (t - s) / 2;
+		build(s, m, p * 2);
+		build(m + 1, t, p * 2 + 1);
+		tree[p] = tree[p * 2] + tree[p * 2 + 1];
+	}
+
+public:
+	explicit SegTreeLazyRangeSet<T>(vector<T> v) {
+		n = v.size();
+		n4 = n * 4;
+		tree = vector<T>(n4, 0);
+		lazy = vector<T>(n4, 0);
+		arr = &v;
+		end = n - 1;
+		root = 1;
+		build(0, end, 1);
+		arr = nullptr;
+	}
+	void show(int p, int depth = 0) {
+		if (p > n4 || tree[p] == 0) return;
+		show(p * 2, depth + 1);
+		for (int i = 0; i < depth; ++i) putchar('\t');
+		printf("%d:%d\n", tree[p], lazy[p]);
+		show(p * 2 + 1, depth + 1);
+	}
+	T range_sum(int l, int r) {
+		return range_sum(l, r, 0, end, root);
+	}
+	void range_set(int l, int r, int val) {
+		range_set(l, r, val, 0, end, root);
+	}
+};
+    ```
 ## 例题
 
 ???+ note "[luogu P3372【模板】线段树 1](https://www.luogu.com.cn/problem/P3372)"
